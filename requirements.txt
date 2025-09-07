@@ -1,4 +1,4 @@
 Flask==2.2.5
 requests==2.31.0
-yt-dlp==2025.07.01
+yt-dlp==2025.09.07
 gunicorn==20.1.0
