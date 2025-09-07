@@ -11,4 +11,3 @@ services:
     envVars:
       - key: TELEGRAM_BOT_TOKEN
         sync: false
-        value: # Render dashboard se manually add karein
