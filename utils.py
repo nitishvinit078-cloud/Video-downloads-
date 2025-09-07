@@ -1,70 +1,51 @@
-import logging
+# utils.py
 import os
-import re
-from pytube import YouTube
-import instaloader
-import asyncio
+import requests
 
-logging.basicConfig(level=logging.INFO)
+def is_youtube_url(url: str) -> bool:
+    if not url:
+        return False
+    u = url.lower()
+    return "youtube.com" in u or "youtu.be" in u
 
-async def download_youtube_video(url, download_path):
-    """Downloads a YouTube video and returns the file path."""
+def telegram_api_call(bot_token: str, method: str, params=None, files=None):
+    """
+    Simple wrapper for Telegram Bot API.
+    method: e.g. 'sendMessage', 'setWebhook'
+    params: dict for query/body
+    files: dict for multipart file uploads
+    """
+    api = f"https://api.telegram.org/bot{bot_token}/{method}"
     try:
-        yt = YouTube(url)
-        stream = yt.streams.get_highest_resolution()
-        
-        if not os.path.exists(download_path):
-            os.makedirs(download_path)
-
-        safe_title = re.sub(r'[^\w\s\.-]', '', yt.title)
-        filename = f"{safe_title[:50]}.mp4"
-        file_path = os.path.join(download_path, filename)
-        
-        logging.info(f"Downloading YouTube video: {yt.title}")
-        
-        await asyncio.to_thread(stream.download, output_path=download_path, filename=filename)
-        
-        return file_path
-        
-    except Exception as e:
-        logging.error(f"Error downloading YouTube video: {e}")
-        return None
-
-async def download_instagram_post(url, download_path):
-    """Downloads an Instagram video or image from a post URL."""
-    try:
-        L = instaloader.Instaloader(download_videos=True, download_pictures=True, save_metadata=False, post_metadata_txt_pattern='')
-        
-        if not os.path.exists(download_path):
-            os.makedirs(download_path)
-
-        original_cwd = os.getcwd()
-        os.chdir(download_path)
-
-        match = re.search(r'(?:/p/|/reel|/tv)/([^/?&]+)', url)
-        if not match:
-            logging.error("Invalid Instagram URL.")
-            os.chdir(original_cwd)
-            return None
-
-        post_shortcode = match.group(1)
-        post = instaloader.Post.from_shortcode(L.context, post_shortcode)
-
-        logging.info(f"Downloading Instagram post from: {url}")
-        
-        await asyncio.to_thread(L.download_post, post, '')
-        
-        filename = None
-        if post.is_video:
-            filename = f"{post.owner_username}_{post.date_utc.strftime('%Y-%m-%d_%H-%M-%S')}_UTC.mp4"
+        if files:
+            resp = requests.post(api, data=params or {}, files=files, timeout=300)
         else:
-            filename = f"{post.owner_username}_{post.date_utc.strftime('%Y-%m-%d_%H-%M-%S')}_UTC.jpg"
-
-        file_path = os.path.join(download_path, filename)
-        os.chdir(original_cwd)
-        
-        return file_path
-
+            resp = requests.post(api, data=params or {}, timeout=30)
+        return resp.json()
     except Exception as e:
-        logging.error(f"Error downloading Instagram post: {e}")
-        return None
+        return {"ok": False, "error": str(e)}
+
+def upload_file_to_telegram(bot_token: str, chat_id: int, file_path: str, caption: str = None):
+    """
+    Upload as document (generic) or video (if extension suggests).
+    Returns response JSON.
+    """
+    filename = os.path.basename(file_path)
+    ext = filename.lower()
+    method = "sendDocument"
+    field_name = "document"
+    if ext.endswith(".mp4") or ext.endswith(".mkv") or ext.endswith(".webm"):
+        method = "sendVideo"
+        field_name = "video"
+
+    api = f"https://api.telegram.org/bot{bot_token}/{method}"
+    try:
+        with open(file_path, "rb") as f:
+            files = {field_name: (filename, f)}
+            data = {"chat_id": str(chat_id)}
+            if caption:
+                data["caption"] = caption
+            resp = requests.post(api, data=data, files=files, timeout=600)
+            return resp.json()
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
