@@ -1,4 +1,4 @@
- # requirements.txt
+# requirements.txt
 python-telegram-bot
-pytube
+pytube==15.0.0
 instaloader
