@@ -1,4 +1,3 @@
-# main.py
 import logging
 import os
 import re
@@ -7,7 +6,6 @@ from telegram.ext import Application, CommandHandler, MessageHandler, filters
 from config import TELEGRAM_BOT_TOKEN
 from utils import download_youtube_video, download_instagram_post
 
-# Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
 async def start_command(update: Update, context) -> None:
@@ -53,7 +51,6 @@ def main() -> None:
     application.add_handler(CommandHandler("start", start_command))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
-    # Use webhook instead of polling
     application.run_webhook(
         listen="0.0.0.0",
         port=PORT,
